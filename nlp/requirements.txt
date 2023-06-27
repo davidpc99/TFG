@@ -5,3 +5,4 @@ tabulate
 tqdm
 docopt
 datasets
+transformers
