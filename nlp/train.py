@@ -197,11 +197,8 @@ if __name__ == '__main__':
     model = net.Net(params).cuda() if params.cuda else net.Net(params)
     optimizer = optim.Adam(model.parameters(), lr=params.learning_rate)
 
-    #lr_scheduler = get_scheduler("linear",optimizer=optimizer,num_warmup_steps=50, num_training_steps=400)
-    num_batches = params.train_size//params.batch_size
-    num_steps = num_batches*params.num_epochs
-    lr_scheduler = get_scheduler("linear", optimizer, num_warmup_steps=num_steps/10, num_training_steps=num_steps)
-    
+    lr_scheduler = get_scheduler("linear",optimizer=optimizer,num_warmup_steps=50, num_training_steps=400)
+
     # fetch loss function and metrics
     loss_fn = net.loss_fn
     metrics = net.metrics

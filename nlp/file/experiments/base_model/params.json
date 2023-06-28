@@ -4,9 +4,7 @@
     "num_epochs": 100,
     "num_heads": 5,
     "num_layers": 5,
-
     "lstm_hidden_dim": 50,
     "embedding_dim": 50,
-
     "save_summary_steps": 100
 }

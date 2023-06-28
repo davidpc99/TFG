@@ -7,6 +7,9 @@ import torch.nn.functional as F
 import math
 
 class LayerNorm(nn.Module):
+    # to-do: check that this is equivalent to the PyTorch implementation and replace nn.LayerNorm with it
+    # to-do: check the init_weights function
+
     def __init__(self, features, eps=1e-6):
         super().__init__()
         self.a_2 = nn.Parameter(torch.ones(features))
@@ -18,6 +21,7 @@ class LayerNorm(nn.Module):
         std = x.std(-1, keepdim=True)
         return self.a_2 * (x - mean) / (std + self.eps) + self.b_2
 
+#Modificado por mí
 class HeadAttention(nn.Module):
     def __init__(self, n_embd, n_embd_head, attn_pdrop=0.1):
         super().__init__()
@@ -32,6 +36,9 @@ class HeadAttention(nn.Module):
         k = self.k_lin(x)
         v = self.v_lin(x)
         att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
+        #Se mete en la dimensión 1, no la dos (luego funciona por broadcasting). Si lo metes en la 2 se obtiene [[[0], [1], [1]]]
+        #y buscamos [[[0, 1, 1]]]
+        #No se puede machacar padding_mask, porque es un puntero
         expanded_mask = padding_mask.unsqueeze(1) # (T, T) -> (B, 1, T)
         att = att.masked_fill(expanded_mask, float('-inf'))
         att = F.softmax(att, dim=-1)
@@ -42,13 +49,17 @@ class HeadAttention(nn.Module):
 class MultiHeadAttentionSimple(nn.Module):
     def __init__(self, n_embd, n_head, attn_pdrop=0.1, resid_pdrop=0.1):
         super().__init__()
+        #¿Por qué la línea de abajo?
         assert n_embd % n_head == 0
         # key, query, value projections for all heads as a list
+        #¿Por qué la división de n_emb // n_head?
         self.heads = nn.ModuleList([HeadAttention(n_embd, n_embd // n_head, attn_pdrop) for _ in range(n_head)])
+        #Concatenación de los distintos heads (homegeniza la palabra)
         self.c_proj = nn.Linear(n_embd, n_embd)  # output projection to integrate head outputs
         self.resid_dropout = nn.Dropout(resid_pdrop)
 
     def forward(self, x, padding_mask):
+        #Concatena las cabeceras entre sí en la dimensión más profunda --> ¿QUÉ SE CONSIGUE CON ESTO?
         y = torch.cat([h(x, padding_mask) for h in self.heads], dim=-1)  # (B, T, n_embd)
         y = self.resid_dropout(self.c_proj(y))
         return y
@@ -88,6 +99,8 @@ class Net(nn.Module):
         ))
         self.lm_head = nn.Linear(params.embedding_dim, params.number_of_tags, bias=False)
         self._init_weights()
+        #Added
+        self.softmax = nn.Softmax(dim=-1)
 
     def _init_weights(self):
         for module in self.modules():
@@ -104,12 +117,18 @@ class Net(nn.Module):
     def forward(self, inputs, outputs=None):
         padding_mask = inputs == self.pad_ind
         device = inputs.device
+        #Se obtiene batch_size y Tokens (tamaños)
         b, t = inputs.size()
+        #Se crea un tensor posicional con valores de 0-t (posiciones de las frases) y se añade una dimensión para que sea (1, t)
         pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0) # shape (1, t)
+
         tok_emb = self.transformer.wte(inputs) # token embeddings of shape (b, t, n_embd)
-        pos_emb = self.transformer.wpe(pos)
+        pos_emb = self.transformer.wpe(pos) 
+        #¿NO HAY QUE HACERLE UN REPEAT A POS_EMB EN LA DIMENSION 0?
         x = self.transformer.drop(tok_emb + pos_emb)
         for block in self.transformer.h:
+            #print(padding_mask)
+            #NO ENTIENDO POR QUÉ PASARLE EL PADDING_MASK A BLOQUE, YA QUE ESTE LO LLEVA A MULTIHEAD, QUE TIENE TAMAÑOS DISTINTOS [NO SE DEBERIA METER TRAS OBTENER X]
             x = block(x, padding_mask)
         x = self.transformer.ln_f(x)
         logits = self.lm_head(x)
