@@ -2,7 +2,6 @@ import datasets
 from docopt import docopt
 import sys
 import os
-import pandas as pd
 
 def getLabels(dataset):
     return dataset.features[f"ner_tags"].feature.names
@@ -15,15 +14,6 @@ def loadDatasets(languages):
         dataset = datasets.load_dataset('wikiann', language)
         loadedDatasets.append(dataset)
     return loadedDatasets
-
-#Mirar que hacer con los sets
-def trainingAugmentation(trainSet, validationSet, testSet):
-    train = datasets.Dataset.from_pandas(pd.DataFrame(data=trainSet))
-    valid = datasets.Dataset.from_pandas(pd.DataFrame(data=validationSet[:1000]))
-    test = datasets.Dataset.from_pandas(pd.DataFrame(data=testSet))
-    valid2Train = datasets.Dataset.from_pandas(pd.DataFrame(data=validationSet[1000:]))
-    train = datasets.concatenate_datasets([train, valid2Train, test])
-    return train, valid
 
 def concatDatasets(datasetList):
     """Gets a list of datasets (one for each language) and concatenates their balanced train, test
@@ -83,7 +73,7 @@ def main():
     languages, directory = argChecks(args)
     datasets = loadDatasets(languages)
     concatDataset = concatDatasets(datasets)
-    labels = getLabels(concatDataset["train"])
+    labels = getLabels(concatDataset)
     sendToTxt(concatDataset["train"], directory + "/train/", labels)
     sendToTxt(concatDataset["validation"], directory + "/val/", labels)
     sendToTxt(concatDataset["test"], directory + "/test/", labels)

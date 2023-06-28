@@ -4,8 +4,6 @@ import argparse
 import logging
 import os
 
-from transformers.optimization import get_scheduler
-
 import numpy as np
 import torch
 import torch.optim as optim
@@ -15,6 +13,7 @@ import utils
 import model.net as net
 from model.data_loader import DataLoader
 from evaluate import evaluate
+from transformers.optimization import get_scheduler
 
 
 parser = argparse.ArgumentParser()
@@ -27,7 +26,7 @@ parser.add_argument('--restore_file', default=None,
                     training")  # 'best' or 'train'
 
 
-def train(model, optimizer, lr_scheduler, loss_fn, data_iterator, metrics, params, num_steps):
+def train(model, optimizer, scheduler, loss_fn, data_iterator, metrics, params, num_steps):
     """Train the model on `num_steps` batches
 
     Args:
@@ -63,7 +62,7 @@ def train(model, optimizer, lr_scheduler, loss_fn, data_iterator, metrics, param
 
         # performs updates using calculated gradients
         optimizer.step()
-        lr_scheduler.step()
+        scheduler.step()
 
         # Evaluate summaries only once in a while
         if i % params.save_summary_steps == 0:
@@ -89,7 +88,7 @@ def train(model, optimizer, lr_scheduler, loss_fn, data_iterator, metrics, param
     logging.info("- Train metrics: " + metrics_string)
 
 
-def train_and_evaluate(model, train_data, val_data, optimizer, lr_scheduler, loss_fn, metrics, params, model_dir, restore_file=None):
+def train_and_evaluate(model, train_data, val_data, optimizer, scheduler, loss_fn, metrics, params, model_dir, restore_file=None):
     """Train the model and evaluate every epoch.
 
     Args:
@@ -120,7 +119,7 @@ def train_and_evaluate(model, train_data, val_data, optimizer, lr_scheduler, los
         num_steps = (params.train_size + 1) // params.batch_size
         train_data_iterator = data_loader.data_iterator(
             train_data, params, shuffle=True)
-        train(model, optimizer, lr_scheduler, loss_fn, train_data_iterator,
+        train(model, optimizer, scheduler, loss_fn, train_data_iterator,
               metrics, params, num_steps)
 
         # Evaluate for one epoch on validation set
@@ -196,17 +195,16 @@ if __name__ == '__main__':
     # Define the model and optimizer
     model = net.Net(params).cuda() if params.cuda else net.Net(params)
     optimizer = optim.Adam(model.parameters(), lr=params.learning_rate)
-
-    #lr_scheduler = get_scheduler("linear",optimizer=optimizer,num_warmup_steps=50, num_training_steps=400)
+    
     num_batches = params.train_size//params.batch_size
     num_steps = num_batches*params.num_epochs
-    lr_scheduler = get_scheduler("linear", optimizer, num_warmup_steps=num_steps/10, num_training_steps=num_steps)
-    
+    scheduler = get_scheduler("linear", optimizer, num_warmup_steps=num_steps/10, num_training_steps=num_steps)
+
     # fetch loss function and metrics
     loss_fn = net.loss_fn
     metrics = net.metrics
 
     # Train the model
     logging.info("Starting training for {} epoch(s)".format(params.num_epochs))
-    train_and_evaluate(model, train_data, val_data, optimizer, lr_scheduler, loss_fn, metrics, params, args.model_dir,
+    train_and_evaluate(model, train_data, val_data, optimizer, scheduler, loss_fn, metrics, params, args.model_dir,
                        args.restore_file)
