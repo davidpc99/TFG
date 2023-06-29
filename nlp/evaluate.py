@@ -44,6 +44,12 @@ def evaluate(model, loss_fn, data_iterator, metrics, params, num_steps):
         output_batch = model(data_batch)
         loss = loss_fn(output_batch, labels_batch)
 
+
+        # print data and labels nicely:
+        #print('data_batch: ', data_batch)
+        #print('labels_batch: ', labels_batch)
+        #print('output_batch: ', output_batch.argmax(dim=-1))
+
         # extract data from torch Variable, move to cpu, convert to numpy arrays
         output_batch = output_batch.data.cpu().numpy()
         labels_batch = labels_batch.data.cpu().numpy()
@@ -89,9 +95,11 @@ if __name__ == '__main__':
     data = data_loader.load_data(['test'], args.data_dir)
     test_data = data['test']
 
+    
     # specify the test set size
     params.test_size = test_data['size']
-    params.pad_ind = data_loader.pad_ind
+    params.pad_ind= data_loader.pad_ind    
+
     test_data_iterator = data_loader.data_iterator(test_data, params)
 
     logging.info("- done.")

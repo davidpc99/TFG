@@ -39,7 +39,7 @@ class HeadAttention(nn.Module):
         #Se mete en la dimensión 1, no la dos (luego funciona por broadcasting). Si lo metes en la 2 se obtiene [[[0], [1], [1]]]
         #y buscamos [[[0, 1, 1]]]
         #No se puede machacar padding_mask, porque es un puntero
-        expanded_mask = padding_mask.unsqueeze(1)
+        expanded_mask = padding_mask.unsqueeze(1) # (T, T) -> (B, 1, T)
         att = att.masked_fill(expanded_mask, float('-inf'))
         att = F.softmax(att, dim=-1)
         att = self.attn_dropout(att)
@@ -78,8 +78,8 @@ class Block(nn.Module):
             dropout = nn.Dropout(resid_pdrop),
         ))
         
-    def forward(self, x, padding_block):
-        x = x + self.attn(self.ln_1(x), padding_block)
+    def forward(self, x, padding_mask):
+        x = x + self.attn(self.ln_1(x), padding_mask)
         m = self.mlp  # just a shorter name
         x = x +  m.dropout(m.c_proj(m.act(m.c_fc(self.ln_2(x)))))
         return x
@@ -92,7 +92,6 @@ class Net(nn.Module):
             #Target embedding ()
             wte = nn.Embedding(params.vocab_size, params.embedding_dim),
             #Position embedding
-            #wpe = nn.Embedding(params.max_len, params.embedding_dim),
             wpe = nn.Embedding(200, params.embedding_dim),
             drop = nn.Dropout(0.1),
             h = nn.ModuleList([Block(params.embedding_dim, params.num_heads, 0.1, 0.1) for _ in range(params.num_layers)]),
@@ -100,6 +99,8 @@ class Net(nn.Module):
         ))
         self.lm_head = nn.Linear(params.embedding_dim, params.number_of_tags, bias=False)
         self._init_weights()
+        #Added
+        self.softmax = nn.Softmax(dim=-1)
 
     def _init_weights(self):
         for module in self.modules():
@@ -122,10 +123,11 @@ class Net(nn.Module):
         pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0) # shape (1, t)
 
         tok_emb = self.transformer.wte(inputs) # token embeddings of shape (b, t, n_embd)
-        pos_emb = self.transformer.wpe(pos)
+        pos_emb = self.transformer.wpe(pos) 
         #¿NO HAY QUE HACERLE UN REPEAT A POS_EMB EN LA DIMENSION 0?
         x = self.transformer.drop(tok_emb + pos_emb)
         for block in self.transformer.h:
+            #print(padding_mask)
             #NO ENTIENDO POR QUÉ PASARLE EL PADDING_MASK A BLOQUE, YA QUE ESTE LO LLEVA A MULTIHEAD, QUE TIENE TAMAÑOS DISTINTOS [NO SE DEBERIA METER TRAS OBTENER X]
             x = block(x, padding_mask)
         x = self.transformer.ln_f(x)
@@ -186,6 +188,11 @@ def accuracy(outputs, labels):
 
     # np.argmax gives us the class predicted for each token by the model
     outputs = np.argmax(outputs, axis=1)
+    
+    print("OUTPUTS")
+    print(outputs)
+    print("LABELS")
+    print(labels)
 
     # compare outputs with labels and divide by number of tokens (excluding PADding tokens)
     return np.sum(outputs == labels)/float(np.sum(mask))
