@@ -3,3 +3,6 @@ Pillow
 torch>=1.2
 tabulate
 tqdm
+docopt
+datasets
+transformers
