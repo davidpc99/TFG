@@ -188,11 +188,6 @@ def accuracy(outputs, labels):
 
     # np.argmax gives us the class predicted for each token by the model
     outputs = np.argmax(outputs, axis=1)
-    
-    print("OUTPUTS")
-    print(outputs)
-    print("LABELS")
-    print(labels)
 
     # compare outputs with labels and divide by number of tokens (excluding PADding tokens)
     return np.sum(outputs == labels)/float(np.sum(mask))
