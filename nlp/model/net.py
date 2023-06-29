@@ -164,9 +164,6 @@ def loss_fn(outputs, labels):
 
     num_tokens = int(torch.sum(mask))
 
-    #print(outputs)
-    #print(labels)
-
     # compute cross entropy loss for all tokens (except PADding tokens), by multiplying with mask.
     return -torch.sum(outputs[range(outputs.shape[0]), labels]*mask)/num_tokens
 
@@ -191,6 +188,11 @@ def accuracy(outputs, labels):
 
     # np.argmax gives us the class predicted for each token by the model
     outputs = np.argmax(outputs, axis=1)
+    
+    print("OUTPUTS")
+    print(outputs)
+    print("LABELS")
+    print(labels)
 
     # compare outputs with labels and divide by number of tokens (excluding PADding tokens)
     return np.sum(outputs == labels)/float(np.sum(mask))
