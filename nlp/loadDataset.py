@@ -4,7 +4,7 @@ import sys
 import os
 
 def getLabels(dataset):
-    return dataset.features[f"ner_tags"].feature.names
+    return dataset['train'].features[f"ner_tags"].feature.names
 
 def loadDatasets(languages):
     """Gets all datasets needed in training and adds them a new label (its language), so
