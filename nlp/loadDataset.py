@@ -4,50 +4,46 @@ import sys
 import os
 
 def getLabels(dataset):
-    return dataset['train'].features[f"ner_tags"].feature.names
+    return dataset["train"].features[f"ner_tags"].feature.names
 
-def loadDatasets(languages):
+def loadDataset(language):
     """Gets all datasets needed in training and adds them a new label (its language), so
     that it can be used to  balance data. Returns a list with the new datasets"""
-    loadedDatasets = []
-    for language in languages:
-        dataset = datasets.load_dataset('wikiann', language)
-        loadedDatasets.append(dataset)
-    return loadedDatasets
+    return datasets.load_dataset('wikiann', language)
 
-def concatDatasets(datasetList):
-    """Gets a list of datasets (one for each language) and concatenates their balanced train, test
-    and validation subsets"""
-    trainSet = []
-    testSet = []
-    validSet = []
-    for dataset in datasetList:
-        trainSet.append(dataset["train"])
-        validSet.append(dataset["validation"])
-        testSet.append(dataset["test"])
-    newTrainSet = datasets.concatenate_datasets(trainSet)
-    newValidSet = datasets.concatenate_datasets(validSet)
-    newTestSet = datasets.concatenate_datasets(testSet)
-    return datasets.DatasetDict({"train":newTrainSet, "validation":newValidSet, "test":newTestSet})
+#def concatDatasets(datasetList):
+#    """Gets a list of datasets (one for each language) and concatenates their balanced train, test
+#    and validation subsets"""
+#    trainSet = []
+#    testSet = []
+#    validSet = []
+#    for dataset in datasetList:
+#        trainSet.append(dataset["train"])
+#        validSet.append(dataset["validation"])
+#        testSet.append(dataset["test"])
+#    newTrainSet = datasets.concatenate_datasets(trainSet)
+#    newValidSet = datasets.concatenate_datasets(validSet)
+#    newTestSet = datasets.concatenate_datasets(testSet)
+#    return datasets.DatasetDict({"train":newTrainSet, "validation":newValidSet, "test":newTestSet})
 
 def usage():
     usage = '''
         Usage:
-            trainer.py [--directory] <directory> [--languages] <languages>
+            loadDataset.py [--directory] <directory> [--language] <language>
     '''
     return docopt(usage)
 
 def argChecks(args):
-    if args["<directory>"] and args["<languages>"]:
+    if args["<directory>"] and args["<language>"]:
         try:
-            os.mkdir("data/" + args["<directory>"])
-            os.mkdir("data/" + args["<directory>"] + "/test")
-            os.mkdir("data/" + args["<directory>"] + "/train")
-            os.mkdir("data/" + args["<directory>"] + "/val")
-        except OSError: 
-            sys.exit("Directory data/" + args["<directory>"] + " already exists")
-        args["<languages>"] = [x for x in args["<languages>"].split(',')]
-        return args["<languages>"], "data/" + args["<directory>"]
+            os.mkdir("languages/" + args["<directory>"])
+            os.mkdir("languages/" + args["<directory>"] + "/test")
+            os.mkdir("languages/" + args["<directory>"] + "/train")
+            os.mkdir("languages/" + args["<directory>"] + "/val")
+        except OSError as e: 
+            print(e)
+            sys.exit("Directory languages/" + args["<directory>"] + " already exists")
+        return args["<language>"], "languages/" + args["<directory>"]
     else:
         sys.exit("Name or languages argument missing")
 
@@ -70,13 +66,12 @@ def sendToTxt(dataset, directory, labels):
     
 def main():
     args = usage()
-    languages, directory = argChecks(args)
-    datasets = loadDatasets(languages)
-    concatDataset = concatDatasets(datasets)
-    labels = getLabels(concatDataset)
-    sendToTxt(concatDataset["train"], directory + "/train/", labels)
-    sendToTxt(concatDataset["validation"], directory + "/val/", labels)
-    sendToTxt(concatDataset["test"], directory + "/test/", labels)
+    language, directory = argChecks(args)
+    dataset = loadDataset(language)
+    labels = getLabels(dataset)
+    sendToTxt(dataset["train"], directory + "/train/", labels)
+    sendToTxt(dataset["validation"], directory + "/val/", labels)
+    sendToTxt(dataset["test"], directory + "/test/", labels)
     
 if __name__=="__main__":
     main()

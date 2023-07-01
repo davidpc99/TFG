@@ -18,13 +18,16 @@ from evaluate import evaluate
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--data_dir', default='data/small',
-                    help="Directory containing the dataset")
+parser.add_argument('--data_dir', default='data/small', help="Directory containing the dataset")
 parser.add_argument('--model_dir', default='experiments/base_model',
                     help="Directory containing params.json")
 parser.add_argument('--restore_file', default=None,
                     help="Optional, name of the file in --model_dir containing weights to reload before \
                     training")  # 'best' or 'train'
+#parser.add_argument('--train_data', default='data/small',
+#                    help="Directory containing the dataset")
+#parser.add_argument('--valid_data', default='data/small',
+#                    help="Directory containing validation dataset")
 
 
 def train(model, optimizer, lr_scheduler, loss_fn, data_iterator, metrics, params, num_steps):
