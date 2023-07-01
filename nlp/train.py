@@ -15,7 +15,7 @@ import utils
 import model.net as net
 from model.data_loader import DataLoader
 from evaluate import evaluate
-
+import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_dir', default='data/small', help="Directory containing the dataset")
@@ -90,6 +90,8 @@ def train(model, optimizer, lr_scheduler, loss_fn, data_iterator, metrics, param
     metrics_string = " ; ".join("{}: {:05.3f}".format(k, v)
                                 for k, v in metrics_mean.items())
     logging.info("- Train metrics: " + metrics_string)
+    
+    return metrics_mean
 
 
 def train_and_evaluate(model, train_data, val_data, optimizer, lr_scheduler, loss_fn, metrics, params, model_dir, restore_file=None):
@@ -113,8 +115,11 @@ def train_and_evaluate(model, train_data, val_data, optimizer, lr_scheduler, los
         logging.info("Restoring parameters from {}".format(restore_path))
         utils.load_checkpoint(restore_path, model, optimizer)
 
+    train_accuracy = []
+    validation_accuracy = []
+    scheduler_learning_rate = []
     best_val_acc = 0.0
-
+    
     for epoch in range(params.num_epochs):
         # Run one epoch
         logging.info("Epoch {}/{}".format(epoch + 1, params.num_epochs))
@@ -123,7 +128,7 @@ def train_and_evaluate(model, train_data, val_data, optimizer, lr_scheduler, los
         num_steps = (params.train_size + 1) // params.batch_size
         train_data_iterator = data_loader.data_iterator(
             train_data, params, shuffle=True)
-        train(model, optimizer, lr_scheduler, loss_fn, train_data_iterator,
+        train_metrics = train(model, optimizer, lr_scheduler, loss_fn, train_data_iterator,
               metrics, params, num_steps)
 
         # Evaluate for one epoch on validation set
@@ -135,6 +140,10 @@ def train_and_evaluate(model, train_data, val_data, optimizer, lr_scheduler, los
 
         val_acc = val_metrics['accuracy']
         is_best = val_acc >= best_val_acc
+        
+        scheduler_learning_rate.append(lr_scheduler.get_last_lr()[0])
+        train_accuracy.append(train_metrics['accuracy'])
+        validation_accuracy.append(val_acc)
 
         # Save weights
         utils.save_checkpoint({'epoch': epoch + 1,
@@ -157,6 +166,26 @@ def train_and_evaluate(model, train_data, val_data, optimizer, lr_scheduler, los
         last_json_path = os.path.join(
             model_dir, "metrics_val_last_weights.json")
         utils.save_dict_to_json(val_metrics, last_json_path)
+        
+    epoch_list = [item for item in range(1, params.num_epochs+1)]
+
+    xaxis = np.array(epoch_list)
+    yaxis = np.array(scheduler_learning_rate)
+    
+    plt.figure()
+    plt.title("Scheduler learning rate")
+    plt.xlabel("Epoch")
+    plt.ylabel('Learning Rate')
+    plt.plot(xaxis, yaxis)
+    
+    plt.figure()
+    plt.title("Model accuracy")
+    plt.xlabel("Epoch")
+    plt.ylabel('Accuracy')
+    plt.plot(xaxis, np.array(train_accuracy), label='Train')
+    plt.plot(xaxis, np.array(validation_accuracy), label='Validation')
+    plt.legend()
+    plt.show()
 
 
 if __name__ == '__main__':
@@ -204,6 +233,7 @@ if __name__ == '__main__':
     num_batches = params.train_size//params.batch_size
     num_steps = num_batches*params.num_epochs
     lr_scheduler = get_scheduler("linear", optimizer, num_warmup_steps=num_steps/10, num_training_steps=num_steps)
+    #scheduler.get_last_lr()[0]
 
     # fetch loss function and metrics
     loss_fn = net.loss_fn
