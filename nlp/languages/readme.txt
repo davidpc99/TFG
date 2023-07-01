@@ -1,1 +1,0 @@
-This directory is used to save all datasets before the concat.

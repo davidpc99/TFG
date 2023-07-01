@@ -36,14 +36,14 @@ def usage():
 def argChecks(args):
     if args["<directory>"] and args["<language>"]:
         try:
-            os.mkdir("languages/" + args["<directory>"])
-            os.mkdir("languages/" + args["<directory>"] + "/test")
-            os.mkdir("languages/" + args["<directory>"] + "/train")
-            os.mkdir("languages/" + args["<directory>"] + "/val")
+            os.mkdir("data/" + args["<directory>"])
+            os.mkdir("data/" + args["<directory>"] + "/test")
+            os.mkdir("data/" + args["<directory>"] + "/train")
+            os.mkdir("data/" + args["<directory>"] + "/val")
         except OSError as e: 
             print(e)
-            sys.exit("Directory languages/" + args["<directory>"] + " already exists")
-        return args["<language>"], "languages/" + args["<directory>"]
+            sys.exit("Directory data/" + args["<directory>"] + " already exists")
+        return args["<language>"], "data/" + args["<directory>"]
     else:
         sys.exit("Name or languages argument missing")
 
