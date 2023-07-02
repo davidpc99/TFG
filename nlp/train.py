@@ -24,11 +24,24 @@ parser.add_argument('--model_dir', default='experiments/base_model',
 parser.add_argument('--restore_file', default=None,
                     help="Optional, name of the file in --model_dir containing weights to reload before \
                     training")  # 'best' or 'train'
-#parser.add_argument('--train_data', default='data/small',
-#                    help="Directory containing the dataset")
-#parser.add_argument('--valid_data', default='data/small',
-#                    help="Directory containing validation dataset")
 
+def send_metrics_to_txt(train_accuracy, validation_accuracy, scheduler_learning_rate, model_dir):
+    train_accuracy = list(map(str, train_accuracy))
+    validation_accuracy = list(map(str, validation_accuracy))
+    scheduler_learning_rate = list(map(str, scheduler_learning_rate
+                                       ))
+    with open(model_dir+'/train_accuracy.txt', 'w+') as f:
+        for accuracy in train_accuracy:
+            f.write(accuracy + '\n')
+            
+    with open(model_dir+'/validation_accuracy.txt', 'w+') as f:
+        for accuracy in validation_accuracy:
+            f.write(accuracy + '\n')
+            
+    with open(model_dir+'/scheduler.txt', 'w+') as f:
+        for lr in scheduler_learning_rate:
+            f.write(lr + '\n')
+            
 
 def train(model, optimizer, lr_scheduler, loss_fn, data_iterator, metrics, params, num_steps):
     """Train the model on `num_steps` batches
@@ -167,39 +180,40 @@ def train_and_evaluate(model, train_data, val_data, optimizer, lr_scheduler, los
             model_dir, "metrics_val_last_weights.json")
         utils.save_dict_to_json(val_metrics, last_json_path)
         
-    epoch_list = [item for item in range(1, params.num_epochs+1)]
-
-    xaxis = np.array(epoch_list)
-    yaxis = np.array(scheduler_learning_rate)
+    #epoch_list = [item for item in range(1, params.num_epochs+1)]
+    #xaxis = np.array(epoch_list)
+    #yaxis = np.array(scheduler_learning_rate)
+    #    
+    #plt.figure("Scheduler")
+    #plt.title("Scheduler learning rate")
+    #plt.xlabel("Epoch")
+    #plt.ylabel('Learning Rate')
+    #plt.plot(xaxis, yaxis)
+    #    
+    #plt.figure("Train")
+    #plt.title("Train accuracy")
+    #plt.xlabel("Epoch")
+    #plt.ylabel('Accuracy')
+    #plt.plot(xaxis, np.array(train_accuracy))
+    #plt.show()
+    #    
+    #plt.figure("Validation")
+    #plt.title("Validation accuracy")
+    #plt.xlabel("Epoch")
+    #plt.ylabel('Accuracy')
+    #plt.plot(xaxis, np.array(validation_accuracy))
+    #plt.show()
+    #    
+    #plt.figure("Train & Validation")
+    #plt.title("Model accuracy")
+    #plt.xlabel("Epoch")
+    #plt.ylabel('Accuracy')
+    #plt.plot(xaxis, np.array(train_accuracy), label='Train')
+    #plt.plot(xaxis, np.array(validation_accuracy), label='Validation')
+    #plt.legend()
+    #plt.show()
     
-    plt.figure("Scheduler")
-    plt.title("Scheduler learning rate")
-    plt.xlabel("Epoch")
-    plt.ylabel('Learning Rate')
-    plt.plot(xaxis, yaxis)
-    
-    plt.figure("Train")
-    plt.title("Train accuracy")
-    plt.xlabel("Epoch")
-    plt.ylabel('Accuracy')
-    plt.plot(xaxis, np.array(train_accuracy))
-    plt.show()
-    
-    plt.figure("Validation")
-    plt.title("Validation accuracy")
-    plt.xlabel("Epoch")
-    plt.ylabel('Accuracy')
-    plt.plot(xaxis, np.array(validation_accuracy))
-    plt.show()
-    
-    plt.figure("Train & Validation")
-    plt.title("Model accuracy")
-    plt.xlabel("Epoch")
-    plt.ylabel('Accuracy')
-    plt.plot(xaxis, np.array(train_accuracy), label='Train')
-    plt.plot(xaxis, np.array(validation_accuracy), label='Validation')
-    plt.legend()
-    plt.show()
+    return train_accuracy, validation_accuracy, scheduler_learning_rate
 
 
 if __name__ == '__main__':
@@ -255,5 +269,6 @@ if __name__ == '__main__':
 
     # Train the model
     logging.info("Starting training for {} epoch(s)".format(params.num_epochs))
-    train_and_evaluate(model, train_data, val_data, optimizer, lr_scheduler, loss_fn, metrics, params, args.model_dir,
+    train_accuracy, validation_accuracy, scheduler_learning_rate = train_and_evaluate(model, train_data, val_data, optimizer, lr_scheduler, loss_fn, metrics, params, args.model_dir,
                        args.restore_file)
+    send_metrics_to_txt(train_accuracy, validation_accuracy, scheduler_learning_rate, args.model_dir)
