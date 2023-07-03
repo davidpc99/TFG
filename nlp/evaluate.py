@@ -17,6 +17,19 @@ parser.add_argument('--restore_file', default='best', help="name of the file in 
                      containing weights to load")
 
 
+def send_metrics_to_txt(model_dir, test_accuracy, test_f1):
+    test_accuracy = list(map(str, test_accuracy))
+    test_f1 = list(map(str, test_f1))
+                                       
+    with open(model_dir+'/test_accuracy.txt', 'w+') as f:
+        for accuracy in test_accuracy:
+            f.write(accuracy + '\n')
+            
+    with open(model_dir+'/test_f1.txt', 'w+') as f:
+        for f1 in test_f1:
+            f.write(f1 + '\n')
+
+
 def evaluate(model, loss_fn, data_iterator, metrics, params, num_steps):
     """Evaluate the model on `num_steps` batches.
 
@@ -44,7 +57,6 @@ def evaluate(model, loss_fn, data_iterator, metrics, params, num_steps):
         output_batch = model(data_batch)
         loss = loss_fn(output_batch, labels_batch)
 
-
         # print data and labels nicely:
         #print('data_batch: ', data_batch)
         #print('labels_batch: ', labels_batch)
@@ -64,7 +76,7 @@ def evaluate(model, loss_fn, data_iterator, metrics, params, num_steps):
     metrics_mean = {metric:np.mean([x[metric] for x in summ]) for metric in summ[0]} 
     metrics_string = " ; ".join("{}: {:05.3f}".format(k, v) for k, v in metrics_mean.items())
     logging.info("- Eval metrics : " + metrics_string)
-    return metrics_mean
+    return metrics_mean, summ
 
 
 if __name__ == '__main__':
@@ -117,6 +129,9 @@ if __name__ == '__main__':
 
     # Evaluate
     num_steps = (params.test_size + 1) // params.batch_size
-    test_metrics = evaluate(model, loss_fn, test_data_iterator, metrics, params, num_steps)
+    test_metrics, summ = evaluate(model, loss_fn, test_data_iterator, metrics, params, num_steps)
+    test_accuracy = [values['accuracy'] for values in summ]
+    test_f1 = [values['f1'] for values in summ]
+    send_metrics_to_txt(args.model_dir, test_accuracy, test_f1)
     save_path = os.path.join(args.model_dir, "metrics_test_{}.json".format(args.restore_file))
     utils.save_dict_to_json(test_metrics, save_path)

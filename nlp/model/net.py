@@ -206,10 +206,10 @@ def f1(outputs, labels):
     #False negative
     fn = np.sum([True if (output == 0 and label != -1 and output != label) else False for output, label in zip(outputs,labels)])
     
-    precision = tp/(tp+fp)
-    recall = tp/(tp+fn)
+    precision = tp/float(tp+fp)
+    recall = tp/float(tp+fn)
     
-    return 2*((precision * recall)/(precision+recall))
+    return 2*((precision * recall)/float(precision+recall))
     
 
 # maintain all metrics required in this dictionary- these are used in the training and evaluation loops

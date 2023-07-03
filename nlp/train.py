@@ -25,9 +25,11 @@ parser.add_argument('--restore_file', default=None,
                     help="Optional, name of the file in --model_dir containing weights to reload before \
                     training")  # 'best' or 'train'
 
-def send_metrics_to_txt(train_accuracy, validation_accuracy, scheduler_learning_rate, model_dir):
+def send_metrics_to_txt(train_accuracy, validation_accuracy, train_f1, validation_f1, scheduler_learning_rate, model_dir):
     train_accuracy = list(map(str, train_accuracy))
     validation_accuracy = list(map(str, validation_accuracy))
+    train_f1 = list(map(str, train_f1))
+    validation_f1 = list(map(str, validation_f1))
     scheduler_learning_rate = list(map(str, scheduler_learning_rate
                                        ))
     with open(model_dir+'/train_accuracy.txt', 'w+') as f:
@@ -38,6 +40,14 @@ def send_metrics_to_txt(train_accuracy, validation_accuracy, scheduler_learning_
         for accuracy in validation_accuracy:
             f.write(accuracy + '\n')
             
+    with open(model_dir+'/train_f1.txt', 'w+') as f:
+        for f1 in train_f1:
+            f.write(f1 + '\n')
+            
+    with open(model_dir+'/validation_f1.txt', 'w+') as f:
+        for f1 in validation_f1:
+            f.write(f1 + '\n')
+                
     with open(model_dir+'/scheduler.txt', 'w+') as f:
         for lr in scheduler_learning_rate:
             f.write(lr + '\n')
@@ -130,6 +140,8 @@ def train_and_evaluate(model, train_data, val_data, optimizer, lr_scheduler, los
 
     train_accuracy = []
     validation_accuracy = []
+    train_f1 = []
+    validation_f1 = []
     scheduler_learning_rate = []
     best_val_acc = 0.0
     
@@ -148,7 +160,7 @@ def train_and_evaluate(model, train_data, val_data, optimizer, lr_scheduler, los
         num_steps = (params.val_size + 1) // params.batch_size
         val_data_iterator = data_loader.data_iterator(
             val_data, params, shuffle=False)
-        val_metrics = evaluate(
+        val_metrics, summ = evaluate(
             model, loss_fn, val_data_iterator, metrics, params, num_steps)
 
         val_acc = val_metrics['accuracy']
@@ -156,7 +168,9 @@ def train_and_evaluate(model, train_data, val_data, optimizer, lr_scheduler, los
         
         scheduler_learning_rate.append(lr_scheduler.get_last_lr()[0])
         train_accuracy.append(train_metrics['accuracy'])
-        validation_accuracy.append(val_acc)
+        validation_accuracy.append(val_metrics['accuracy'])
+        train_f1.append(train_metrics['f1'])
+        validation_f1.append(val_metrics['f1'])
 
         # Save weights
         utils.save_checkpoint({'epoch': epoch + 1,
@@ -213,7 +227,7 @@ def train_and_evaluate(model, train_data, val_data, optimizer, lr_scheduler, los
     #plt.legend()
     #plt.show()
     
-    return train_accuracy, validation_accuracy, scheduler_learning_rate
+    return train_accuracy, validation_accuracy, train_f1, validation_f1, scheduler_learning_rate
 
 
 if __name__ == '__main__':
@@ -269,6 +283,6 @@ if __name__ == '__main__':
 
     # Train the model
     logging.info("Starting training for {} epoch(s)".format(params.num_epochs))
-    train_accuracy, validation_accuracy, scheduler_learning_rate = train_and_evaluate(model, train_data, val_data, optimizer, lr_scheduler, loss_fn, metrics, params, args.model_dir,
+    train_accuracy, validation_accuracy, train_f1, validation_f1, scheduler_learning_rate = train_and_evaluate(model, train_data, val_data, optimizer, lr_scheduler, loss_fn, metrics, params, args.model_dir,
                        args.restore_file)
-    send_metrics_to_txt(train_accuracy, validation_accuracy, scheduler_learning_rate, args.model_dir)
+    send_metrics_to_txt(train_accuracy, validation_accuracy, train_f1, validation_f1, scheduler_learning_rate, args.model_dir)
